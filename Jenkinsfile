@@ -1,21 +1,22 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = "hubuser121/my-app:latest"
+        DOCKER_HUB_CREDENTIALS = "docker-hub-credentials"
+    }
+
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/hubuser121/Automation_devops.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    try {
-                        docker.build('my-app:latest')
-                    } catch (Exception e) {
-                        error "Failed to build Docker image: ${e.message}"
-                    }
+                    sh "docker build -t ${DOCKER_IMAGE} ."
                 }
             }
         }
@@ -23,12 +24,17 @@ pipeline {
         stage('Push Docker Image to Registry') {
             steps {
                 script {
-                    // Add steps to push Docker image to registry
+                    withDockerRegistry([credentialsId: DOCKER_HUB_CREDENTIALS, url: 'https://index.docker.io/v1/']) {
+                        sh "docker push ${DOCKER_IMAGE}"
+                    }
                 }
             }
-            when {
-                expression {
-                    currentBuild.result == null || currentBuild.result == 'SUCCESS'
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh "kubectl apply -f k8s-deployment.yaml"
                 }
             }
         }
@@ -36,20 +42,26 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Add steps to run tests
+                    sh "pytest tests/"
                 }
             }
-            when {
-                expression {
-                    currentBuild.result == null || currentBuild.result == 'SUCCESS'
+        }
+
+        stage('Monitor with Prometheus') {
+            steps {
+                script {
+                    sh "kubectl apply -f prometheus-config.yaml"
                 }
             }
         }
     }
 
     post {
+        success {
+            echo "✅ Pipeline executed successfully!"
+        }
         failure {
-            echo '❌ Pipeline failed. Check logs.'
+            echo "❌ Pipeline failed. Check logs!"
         }
     }
 }
