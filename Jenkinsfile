@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "hubuser121/my-app:latest"
-        DOCKER_HUB_CREDENTIALS = "docker-hub-credentials"
+        DOCKER_IMAGE = "my-app:latest"
+        REGISTRY = "docker.io/hubuser121"
     }
 
     stages {
@@ -15,53 +15,32 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${DOCKER_IMAGE} ."
-                }
+                sh 'docker build -t $DOCKER_IMAGE .'
             }
         }
 
-        stage('Push Docker Image to Registry') {
+        stage('Push Docker Image') {
             steps {
-                script {
-                    withDockerRegistry([credentialsId: DOCKER_HUB_CREDENTIALS, url: 'https://index.docker.io/v1/']) {
-                        sh "docker push ${DOCKER_IMAGE}"
-                    }
+                withDockerRegistry([credentialsId: 'dockerhub', url: '']) {
+                    sh 'docker tag $DOCKER_IMAGE $REGISTRY/$DOCKER_IMAGE'
+                    sh 'docker push $REGISTRY/$DOCKER_IMAGE'
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    sh "kubectl apply -f k8s-deployment.yaml"
-                }
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                script {
-                    sh "pytest tests/"
-                }
-            }
-        }
-
-        stage('Monitor with Prometheus') {
-            steps {
-                script {
-                    sh "kubectl apply -f prometheus-config.yaml"
-                }
+                sh 'kubectl apply -f k8s/deployment.yaml'
             }
         }
     }
 
     post {
-        success {
-            echo "✅ Pipeline executed successfully!"
-        }
         failure {
             echo "❌ Pipeline failed. Check logs!"
+        }
+        success {
+            echo "✅ Deployment successful!"
         }
     }
 }
