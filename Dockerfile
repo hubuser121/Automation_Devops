@@ -1,7 +1,5 @@
-FROM python:3.9
-
 WORKDIR /app
-COPY . .
+COPY requirements.txt .    # Copy only requirements.txt first
 RUN pip install -r requirements.txt
-
+COPY . .                  # Copy remaining files
 CMD ["python", "app.py"]
