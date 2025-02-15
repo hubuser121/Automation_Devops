@@ -2,54 +2,32 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/hubuser121/Automation_devops.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    try {
-                        docker.build('my-app:latest', 'docker')
-                    } catch (Exception e) {
-                        error "Failed to build Docker image: ${e.message}"
-                    }
+                    sh 'docker build -t my-app:latest .'
                 }
             }
         }
 
-        stage('Push Docker Image to Registry') {
+        stage('Run Container') {
             steps {
                 script {
-                    // Add steps to push Docker image to registry
-                }
-            }
-            when {
-                expression {
-                    currentBuild.result == null || currentBuild.result == 'SUCCESS'
-                }
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                script {
-                    // Add steps to run tests
-                }
-            }
-            when {
-                expression {
-                    currentBuild.result == null || currentBuild.result == 'SUCCESS'
+                    sh 'docker run -d -p 5000:5000 my-app:latest'
                 }
             }
         }
     }
 
     post {
-        failure {
-            echo '❌ Pipeline failed. Check logs.'
+        always {
+            echo 'Pipeline execution completed!'
         }
     }
 }
