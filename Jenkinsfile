@@ -11,7 +11,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t my-app:latest .'
+                    bat "docker build -t my-app:latest ."
                 }
             }
         }
@@ -19,15 +19,35 @@ pipeline {
         stage('Run Container') {
             steps {
                 script {
-                    sh 'docker run -d -p 5000:5000 my-app:latest'
+                    bat "docker run -d -p 5000:5000 --name my-app-container my-app:latest"
+                }
+            }
+        }
+
+        stage('Check Running Containers') {
+            steps {
+                script {
+                    bat "docker ps"
+                }
+            }
+        }
+
+        stage('Run Application') {
+            steps {
+                script {
+                    // Runs Python app inside the container (background mode)
+                    bat "docker exec -d my-app-container python app.py"
                 }
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline execution completed!'
+        success {
+            echo '✅ Pipeline executed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs!'
         }
     }
 }
