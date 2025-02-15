@@ -1,38 +1,54 @@
 pipeline {
     agent any
+
     stages {
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/hubuser121/Automation_devops.git'
+                git branch: 'main', url: 'https://github.com/hubuser121/Automation_devops.git'
             }
         }
+
         stage('Build Docker Image') {
             steps {
-                bat 'docker build -t my-app:latest .'
+                script {
+                    bat "docker build -t my-app:latest ."
+                }
             }
         }
+
         stage('Run Container') {
             steps {
                 script {
-                    bat 'docker run -d -p 5000:5000 --name my-app-container my-app:latest'
+                    // Stop and remove any existing container
+                    bat "docker rm -f my-app-container || echo 'No existing container to remove'"
+                    bat "docker run -d -p 5000:5000 --name my-app-container my-app:latest"
                 }
             }
         }
+
         stage('Check Running Containers') {
             steps {
-                bat 'docker ps'
+                script {
+                    bat "docker ps"
+                }
             }
         }
+
         stage('Run Application') {
             steps {
                 script {
-                    def status = bat(script: 'docker inspect -f "{{.State.Running}}" my-app-container', returnStdout: true).trim()
-                    if (status != "true") {
-                        bat 'docker logs my-app-container'
-                        error "Container failed to start. Check logs."
-                    }
+                    bat "docker exec -d my-app-container python app.py"
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline executed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs!'
         }
     }
 }
